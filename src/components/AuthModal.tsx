@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Mail, Lock, User } from 'lucide-react';
 import { toast } from 'sonner';
@@ -31,14 +31,21 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate API call
+    // Simulate API call - in real app, this would validate credentials
     setTimeout(() => {
       setIsLoading(false);
-      toast.success('Login successful');
+      
+      // Mock login success - in real app, this would come from backend
+      const isAdmin = loginEmail === 'admin@example.com' && loginPassword === 'admin123';
+      
+      toast.success(`Login successful as ${isAdmin ? 'admin' : 'user'}`);
       onClose();
       if (onSuccess) {
         onSuccess();
       }
+      
+      // Redirect based on role
+      window.location.href = isAdmin ? '/admin' : '/dashboard';
     }, 1500);
   };
 

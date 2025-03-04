@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Books from "./pages/Books";
@@ -13,6 +13,8 @@ import About from "./pages/About";
 import BookDetail from "./pages/BookDetail";
 import Checkout from "./pages/Checkout";
 import Account from "./pages/Account";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import UserDashboard from "./pages/user/UserDashboard";
 
 const queryClient = new QueryClient();
 
@@ -31,7 +33,10 @@ const App = () => (
           <Route path="/categories" element={<Categories />} />
           <Route path="/about" element={<About />} />
           <Route path="/account" element={<Account />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="/dashboard" element={<UserDashboard />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+          {/* Redirect /book/:id to /books/:id */}
+          <Route path="/book/:id" element={<Navigate to="/books/:id" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

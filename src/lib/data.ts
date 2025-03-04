@@ -1,4 +1,3 @@
-
 // Mock data for bookstore
 export interface Book {
   id: string;
@@ -192,10 +191,15 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'user' | 'visitor';
+  role: 'admin' | 'user';
 }
 
-export const currentUser: User | null = null;
+export const currentUser: User | null = {
+  id: '1',
+  name: 'John Doe',
+  email: 'john@example.com',
+  role: 'user'
+};
 
 // Cart functionality
 export interface CartItem {
