@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -7,8 +6,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/components/ui/use-toast';
-import { User, Package, Heart, Settings, LogOut } from 'lucide-react';
+import { User, Package, Heart, Settings, LogOut, Clock } from 'lucide-react';
 import AuthModal from '@/components/AuthModal';
+import { Link } from 'react-router-dom';
 
 const Account: React.FC = () => {
   const { toast } = useToast();
@@ -28,8 +28,42 @@ const Account: React.FC = () => {
     zipCode: '12345',
   });
 
+  // Mock rentals data
+  const rentals = [
+    {
+      id: 'RNT-1001',
+      bookTitle: 'The Great Gatsby',
+      rentDate: '2025-02-01',
+      dueDate: '2025-02-15',
+      returned: true,
+      returnDate: '2025-02-12',
+      depositAmount: 15.00,
+      refundAmount: 15.00,
+    },
+    {
+      id: 'RNT-1002',
+      bookTitle: 'To Kill a Mockingbird',
+      rentDate: '2025-02-20',
+      dueDate: '2025-03-06',
+      returned: false,
+      depositAmount: 12.50,
+    }
+  ];
+
   useEffect(() => {
     setIsPageLoaded(true);
+    
+    // Check URL parameters for authentication success
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('login') === 'success') {
+      setIsLoggedIn(true);
+      toast({
+        title: "Login Successful",
+        description: "Welcome back to BookHaven!",
+      });
+      // Clean up URL
+      window.history.replaceState({}, document.title, "/account");
+    }
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -160,6 +194,13 @@ const Account: React.FC = () => {
                     onClick={() => setActiveTab('orders')}
                   >
                     <Package className="mr-2 h-4 w-4" /> Orders
+                  </Button>
+                  <Button
+                    variant={activeTab === 'rentals' ? 'default' : 'ghost'}
+                    className="w-full justify-start"
+                    onClick={() => setActiveTab('rentals')}
+                  >
+                    <Clock className="mr-2 h-4 w-4" /> Rentals
                   </Button>
                   <Button
                     variant={activeTab === 'wishlist' ? 'default' : 'ghost'}
@@ -359,6 +400,78 @@ const Account: React.FC = () => {
                               View Details
                             </Button>
                           </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* Rentals tab */}
+              {activeTab === 'rentals' && (
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                  <h2 className="text-xl font-semibold mb-6">My Rentals</h2>
+                  
+                  {rentals.length === 0 ? (
+                    <div className="text-center py-12 border border-dashed rounded-lg">
+                      <Clock className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-medium mb-2">No rentals yet</h3>
+                      <p className="text-muted-foreground mb-6">
+                        You haven't rented any books yet.
+                      </p>
+                      <Button onClick={() => window.location.href = '/books'}>
+                        Browse Books to Rent
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {rentals.map((rental) => (
+                        <div key={rental.id} className="border rounded-lg p-4">
+                          <div className="flex flex-wrap justify-between mb-4">
+                            <div>
+                              <h3 className="font-semibold">{rental.bookTitle}</h3>
+                              <p className="text-sm text-muted-foreground">
+                                Rental ID: {rental.id}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-semibold">Deposit: ${rental.depositAmount.toFixed(2)}</p>
+                              <span className={`inline-block px-2 py-1 text-xs rounded-full ${
+                                rental.returned 
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-blue-100 text-blue-800'
+                              }`}>
+                                {rental.returned ? 'Returned' : 'Active'}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm mt-3">
+                            <div>
+                              <p className="text-muted-foreground">Rented on: {new Date(rental.rentDate).toLocaleDateString()}</p>
+                              <p className="text-muted-foreground">Due date: {new Date(rental.dueDate).toLocaleDateString()}</p>
+                            </div>
+                            <div className="text-right">
+                              {rental.returned ? (
+                                <div>
+                                  <p className="text-muted-foreground">Returned on: {new Date(rental.returnDate!).toLocaleDateString()}</p>
+                                  <p className="text-muted-foreground">Refund: ${rental.refundAmount?.toFixed(2)}</p>
+                                </div>
+                              ) : (
+                                <p className="text-muted-foreground">
+                                  Days remaining: {Math.ceil((new Date(rental.dueDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {!rental.returned && (
+                            <div className="mt-4 flex justify-end">
+                              <Button variant="outline" size="sm">
+                                Return Book
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>

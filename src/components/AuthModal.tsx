@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,9 +10,10 @@ import { toast } from 'sonner';
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
-const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
+const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -36,6 +36,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       setIsLoading(false);
       toast.success('Login successful');
       onClose();
+      if (onSuccess) {
+        onSuccess();
+      }
     }, 1500);
   };
 
@@ -54,6 +57,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       setIsLoading(false);
       toast.success('Registration successful');
       onClose();
+      if (onSuccess) {
+        onSuccess();
+      }
     }, 1500);
   };
 
