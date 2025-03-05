@@ -37,8 +37,8 @@ const App = () => (
             <Route path="/account" element={<Account />} />
             <Route path="/dashboard" element={<UserDashboard />} />
             <Route path="/admin" element={<AdminDashboard />} />
-            {/* Fix the redirect to use path params correctly */}
-            <Route path="/book/:id" element={<Navigate to={(location) => `/books/${location.pathname.split('/').pop()}`} replace />} />
+            {/* Fix the redirect by using the Navigate component properly */}
+            <Route path="/book/:id" element={<Navigate to="/books/:id" replace />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

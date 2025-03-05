@@ -1,11 +1,39 @@
 
-import { books as initialBooks, Book, CartItem, User } from '@/lib/data';
+// Exporting the User type for use in other files
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'user';
+}
+
+export interface Book {
+  id: string;
+  title: string;
+  author: string;
+  description: string;
+  price: number;
+  rentPrice?: number;
+  imageUrl: string;
+  category: string[];
+  featured: boolean;
+  inStock: number;
+  rating: number;
+  publishDate: string;
+}
+
+export interface CartItem {
+  bookId: string;
+  quantity: number;
+  isRental: boolean;
+  rentalDays?: number;
+}
 
 // Simulate API delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // In-memory storage (simulating a database)
-let books = [...initialBooks];
+let books = [...([] as Book[])]; // We'll initialize this from lib/data
 let cartItems: CartItem[] = [];
 let users: User[] = [
   {
@@ -21,6 +49,10 @@ let users: User[] = [
     role: 'admin'
   }
 ];
+
+// Import initial data
+import { books as initialBooks } from '@/lib/data';
+books = [...initialBooks];
 
 // Books API
 export const booksApi = {

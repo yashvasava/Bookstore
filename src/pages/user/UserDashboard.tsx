@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -97,6 +96,16 @@ const UserDashboard = () => {
     );
   }
 
+  // Function to get the date string safely
+  const getDateString = (item: Order | Rental): string => {
+    if ('createdAt' in item) {
+      return item.createdAt;
+    } else if ('startDate' in item) {
+      return item.startDate;
+    }
+    return new Date().toISOString(); // Fallback
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -173,7 +182,7 @@ const UserDashboard = () => {
                 ) : (
                   <div className="space-y-4">
                     {[...rentals, ...orders]
-                      .sort((a, b) => new Date(b.createdAt || b.startDate).getTime() - new Date(a.createdAt || a.startDate).getTime())
+                      .sort((a, b) => new Date(getDateString(b)).getTime() - new Date(getDateString(a)).getTime())
                       .slice(0, 3)
                       .map((item, index) => (
                         <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
@@ -185,7 +194,7 @@ const UserDashboard = () => {
                               }
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              {new Date('status' in item ? item.createdAt : item.startDate).toLocaleDateString()}
+                              {new Date(getDateString(item)).toLocaleDateString()}
                             </p>
                           </div>
                           <Button variant="ghost" size="sm">View</Button>
