@@ -1,4 +1,3 @@
-
 // Exporting the User type for use in other files
 export interface User {
   id: string;
@@ -64,14 +63,15 @@ initialBooks.forEach(book => {
     author: book.author,
     description: book.description,
     price: book.price,
-    rentPrice: book.rentPrice,
+    rentPrice: book.rentPrice || undefined,
     imageUrl: book.coverImage || '/placeholder.svg', // Use coverImage or fallback
     category: book.category,
     featured: book.featured,
-    inStock: book.stock || 10, // Using stock property if available
+    inStock: book.stock || 10, // Using stock property if available or default to 10
     rating: book.rating || 4, // Default rating if not provided
-    publishDate: book.publishDate || new Date().toISOString(), // Using publishDate property
+    publishDate: book.releaseDate || new Date().toISOString(), // Using releaseDate property
     coverImage: book.coverImage,
+    available: book.available,
     stock: book.stock
   };
   books.push(newBook);

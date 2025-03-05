@@ -20,10 +20,27 @@ class MockDatabase {
       const savedData = localStorage.getItem('bookhaven_db');
       if (savedData) {
         this.storage = JSON.parse(savedData);
+      } else {
+        // Initialize with data from memory if localStorage is empty
+        this.initializeWithDefaultData();
       }
     } catch (error) {
       console.error('Error loading data from localStorage:', error);
+      // Initialize with default data if there's an error
+      this.initializeWithDefaultData();
     }
+  }
+
+  // Initialize with some default data
+  private initializeWithDefaultData() {
+    // Import default data
+    import('@/lib/data').then(({ books, categories }) => {
+      this.storage.books = books;
+      this.storage.book_categories = categories.map((name: string) => ({ name }));
+      this.saveData();
+    }).catch(err => {
+      console.error('Failed to load default data:', err);
+    });
   }
 
   // Save data to localStorage
@@ -86,7 +103,13 @@ const mockDB = new MockDatabase();
 // Initialize the database
 export const initializeDatabase = async () => {
   try {
-    console.log('Mock database initialized successfully');
+    // Add some console logging to help debug
+    console.log('Initializing mock database...');
+    
+    // Check if we have books data
+    const books = await mockDB.query('books', 'SELECT');
+    console.log(`Database initialized with ${books.length} books`);
+    
     return true;
   } catch (error) {
     console.error('Mock database initialization failed:', error);
@@ -95,11 +118,8 @@ export const initializeDatabase = async () => {
 };
 
 // Helper function to execute queries
-export const query = async (sql: string, params: any[] = []) => {
-  console.log('Query executed:', sql, params);
-  // This is just a mock - in a real app, you would parse the SQL
-  // For now, we'll just return an empty array
-  return [];
+export const query = async (table: string, action: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE', data?: any, where?: (item: any) => boolean): Promise<any[]> => {
+  return mockDB.query(table, action, data, where);
 };
 
 // Export database functions

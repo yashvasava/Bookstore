@@ -32,7 +32,14 @@ const BookRedirect = () => {
   return <Navigate to={`/books/${id}`} replace />;
 };
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => {
   const [isInitialized, setIsInitialized] = useState(false);
@@ -42,11 +49,18 @@ const App = () => {
   useEffect(() => {
     const init = async () => {
       try {
-        await initializeDatabase();
-        // Pre-fetch books data
-        await booksApi.getBooks();
-        console.log("Database initialized successfully");
-        setIsInitialized(true);
+        console.log("Starting database initialization...");
+        const success = await initializeDatabase();
+        
+        if (success) {
+          console.log("Database initialized successfully");
+          // Pre-fetch books data
+          const books = await booksApi.getBooks();
+          console.log(`Loaded ${books.length} books from API`);
+          setIsInitialized(true);
+        } else {
+          throw new Error("Database initialization returned false");
+        }
       } catch (error) {
         console.error("Database initialization failed:", error);
         setError("Failed to initialize database. Using fallback data.");
