@@ -22,8 +22,9 @@ import ReturnsPolicy from "./pages/ReturnsPolicy";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsConditions from "./pages/TermsConditions";
 import Contact from "./pages/Contact";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { initializeDatabase } from "./services/database";
+import { booksApi } from "./services/api";
 
 // Create a wrapper component for book redirect
 const BookRedirect = () => {
@@ -34,25 +35,50 @@ const BookRedirect = () => {
 const queryClient = new QueryClient();
 
 const App = () => {
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
   // Initialize database on app start
   useEffect(() => {
     const init = async () => {
       try {
         await initializeDatabase();
+        // Pre-fetch books data
+        await booksApi.getBooks();
         console.log("Database initialized successfully");
+        setIsInitialized(true);
       } catch (error) {
         console.error("Database initialization failed:", error);
+        setError("Failed to initialize database. Using fallback data.");
+        setIsInitialized(true); // Still allow app to render with in-memory data
       }
     };
     
     init();
   }, []);
   
+  // Show loading state until initialization is complete
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-lg">Loading application...</p>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        {error && (
+          <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 fixed top-0 right-0 left-0 z-50">
+            <p>{error}</p>
+          </div>
+        )}
         <BrowserRouter>
           <AuthProvider>
             <Routes>

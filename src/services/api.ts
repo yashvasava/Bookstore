@@ -1,3 +1,4 @@
+
 // Exporting the User type for use in other files
 export interface User {
   id: string;
@@ -19,6 +20,9 @@ export interface Book {
   inStock: number;
   rating: number;
   publishDate: string;
+  coverImage?: string; // Added to match imports from lib/data
+  available?: boolean; // Added to match usage in AdminDashboard
+  stock?: number; // Added to match usage in imports from lib/data
 }
 
 export interface CartItem {
@@ -64,9 +68,11 @@ initialBooks.forEach(book => {
     imageUrl: book.coverImage || '/placeholder.svg', // Use coverImage or fallback
     category: book.category,
     featured: book.featured,
-    inStock: book.stock || 10, // Default to 10 if stock is not provided
+    inStock: book.stock || 10, // Using stock property if available
     rating: book.rating || 4, // Default rating if not provided
-    publishDate: book.publishDate || new Date().toISOString() // Default to current date if not provided
+    publishDate: book.publishDate || new Date().toISOString(), // Using publishDate property
+    coverImage: book.coverImage,
+    stock: book.stock
   };
   books.push(newBook);
 });
