@@ -1,4 +1,3 @@
-
 // Exporting the User type for use in other files
 export interface User {
   id: string;
@@ -33,7 +32,7 @@ export interface CartItem {
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // In-memory storage (simulating a database)
-let books = [...([] as Book[])]; // We'll initialize this from lib/data
+let books: Book[] = [];
 let cartItems: CartItem[] = [];
 let users: User[] = [
   {
@@ -50,9 +49,27 @@ let users: User[] = [
   }
 ];
 
-// Import initial data
+// Import initial data 
 import { books as initialBooks } from '@/lib/data';
-books = [...initialBooks];
+
+// Convert initialBooks to the format we need
+initialBooks.forEach(book => {
+  const newBook: Book = {
+    id: book.id,
+    title: book.title,
+    author: book.author,
+    description: book.description,
+    price: book.price,
+    rentPrice: book.rentPrice,
+    imageUrl: book.coverImage || '/placeholder.svg', // Use coverImage or fallback
+    category: book.category,
+    featured: book.featured,
+    inStock: book.stock || 10, // Default to 10 if stock is not provided
+    rating: book.rating || 4, // Default rating if not provided
+    publishDate: book.publishDate || new Date().toISOString() // Default to current date if not provided
+  };
+  books.push(newBook);
+});
 
 // Books API
 export const booksApi = {
