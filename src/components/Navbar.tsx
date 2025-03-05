@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Search, ShoppingCart, User, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cart } from '@/lib/data';
@@ -10,6 +10,7 @@ const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [cartItemCount, setCartItemCount] = useState(0);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -26,6 +27,10 @@ const Navbar = () => {
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const handleProfileClick = () => {
+    navigate('/account');
   };
 
   return (
@@ -68,7 +73,7 @@ const Navbar = () => {
               )}
             </Button>
           </Link>
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" onClick={handleProfileClick}>
             <User className="h-5 w-5" />
           </Button>
         </div>
@@ -125,7 +130,15 @@ const Navbar = () => {
               About
             </Link>
             <div className="border-t pt-2">
-              <Button variant="outline" className="w-full justify-start" size="sm">
+              <Button 
+                variant="outline" 
+                className="w-full justify-start" 
+                size="sm"
+                onClick={() => {
+                  navigate('/account');
+                  setIsMobileMenuOpen(false);
+                }}
+              >
                 <User className="h-4 w-4 mr-2" />
                 Sign In
               </Button>
