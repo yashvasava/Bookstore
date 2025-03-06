@@ -160,7 +160,7 @@ class MockDatabase {
         image_url: book.coverImage || '/placeholder.svg',
         category_ids: book.category.map((_, index) => `cat-${index + 1}`),
         featured: book.featured,
-        in_stock: book.stock !== undefined ? book.stock : 10, // Fixed to check if stock exists
+        in_stock: typeof book.stock === 'number' ? book.stock : 10, // Explicit type check
         rating: book.rating || 4,
         publish_date: book.releaseDate || new Date().toISOString(),
         created_at: new Date().toISOString(),
@@ -199,7 +199,7 @@ class MockDatabase {
     action: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE', 
     data?: any, 
     where?: (item: any) => boolean
-  ): Promise<any[]> {
+  ): Promise<any> {
     // Simple delay to simulate network latency
     await new Promise(resolve => setTimeout(resolve, 100));
 

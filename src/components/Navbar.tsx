@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, ShoppingCart, User, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cart } from '@/lib/data';
 import SearchBar from './SearchBar';
+import { cartApi } from '@/services/api';
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -21,9 +21,24 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Load cart items count on every render
   useEffect(() => {
-    setCartItemCount(cart.reduce((total, item) => total + item.quantity, 0));
-  }, [cart]);
+    const loadCartItems = async () => {
+      try {
+        const items = await cartApi.getCart();
+        setCartItemCount(items.reduce((total, item) => total + item.quantity, 0));
+      } catch (error) {
+        console.error('Error loading cart items:', error);
+      }
+    };
+    
+    loadCartItems();
+    
+    // Setup a timer to refresh cart count every 5 seconds
+    const intervalId = setInterval(loadCartItems, 5000);
+    
+    return () => clearInterval(intervalId);
+  }, []);
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);

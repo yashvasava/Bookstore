@@ -1,4 +1,3 @@
-
 // Exporting the User type for use in other files
 export interface User {
   id: string;
@@ -17,8 +16,8 @@ export interface Book {
   imageUrl: string;
   category: string[];
   featured: boolean;
-  inStock: number; // Added explicitly
-  stock?: number;  // Added explicitly
+  inStock: number;
+  stock: number; // Added explicitly for compatibility
   rating: number;
   publishDate: string;
   coverImage?: string;
@@ -71,7 +70,7 @@ initialBooks.forEach(book => {
     category: book.category,
     featured: book.featured,
     inStock: book.stock || 10, // Using stock property if available or default to 10
-    stock: book.stock,  // Keep the stock property
+    stock: book.stock || 10,  // Keep the stock property with a default value
     rating: book.rating || 4, // Default rating if not provided
     publishDate: book.releaseDate || new Date().toISOString(), // Using releaseDate property
     coverImage: book.coverImage,
