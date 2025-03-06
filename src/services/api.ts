@@ -1,3 +1,4 @@
+
 // Exporting the User type for use in other files
 export interface User {
   id: string;
@@ -19,9 +20,11 @@ export interface Book {
   inStock: number;
   rating: number;
   publishDate: string;
-  coverImage?: string; // Added to match imports from lib/data
-  available?: boolean; // Added to match usage in AdminDashboard
-  stock?: number; // Added to match usage in imports from lib/data
+  coverImage?: string;
+  available?: boolean;
+  stock?: number; // Added explicitly to fix TypeScript errors
+  publisher?: string;
+  releaseDate?: string;
 }
 
 export interface CartItem {
@@ -72,7 +75,8 @@ initialBooks.forEach(book => {
     publishDate: book.releaseDate || new Date().toISOString(), // Using releaseDate property
     coverImage: book.coverImage,
     available: book.available,
-    stock: book.stock
+    stock: book.stock, // Keep this property
+    releaseDate: book.releaseDate
   };
   books.push(newBook);
 });
@@ -114,7 +118,8 @@ export const booksApi = {
     await delay(700);
     const newBook = {
       ...book,
-      id: `${books.length + 1}`
+      id: `${books.length + 1}`,
+      price: Number(book.price) // Convert price to rupees and ensure it's a number
     };
     books.push(newBook);
     return newBook;
@@ -301,6 +306,7 @@ export interface Order {
   paymentMethod: string;
   createdAt: string;
   updatedAt: string;
+  emailSent?: boolean; // Track if confirmation email was sent
 }
 
 // In-memory orders
@@ -360,10 +366,15 @@ export const orderApi = {
       shippingAddress,
       paymentMethod,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      emailSent: false // Initially, email is not sent
     };
     
     orders.push(newOrder);
+    
+    // Send confirmation email
+    sendOrderConfirmationEmail(newOrder);
+    
     return newOrder;
   },
   
@@ -394,6 +405,7 @@ export interface Rental {
   returnDate?: string;
   depositAmount: number;
   refundAmount?: number;
+  lateFee?: number; // Add late fee field
 }
 
 // In-memory rentals
@@ -472,20 +484,124 @@ export const rentalApi = {
     
     // Calculate refund based on return date
     let refundAmount = rental.depositAmount;
+    let lateFee = 0;
+    
     if (now > endDate) {
-      // Late return - deduct 10% per day late, up to the full deposit
+      // Calculate days late
       const daysLate = Math.ceil((now.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24));
-      const deduction = rental.depositAmount * 0.1 * daysLate;
-      refundAmount = Math.max(0, rental.depositAmount - deduction);
+      
+      // Late fee is 50 rupees per day
+      lateFee = daysLate * 50;
+      
+      // Deduct late fee from refund, but don't exceed deposit
+      refundAmount = Math.max(0, rental.depositAmount - lateFee);
     }
     
     rentals[rentalIndex] = {
       ...rental,
       returned: true,
       returnDate: now.toISOString(),
-      refundAmount
+      refundAmount,
+      lateFee
     };
     
     return rentals[rentalIndex];
+  }
+};
+
+// Email service (mock)
+export const emailService = {
+  sendEmail: async (to: string, subject: string, body: string): Promise<boolean> => {
+    // This is a mock email service that logs to console
+    // In a real app, you would connect to an email service provider
+    console.log(`Sending email to: ${to}`);
+    console.log(`Subject: ${subject}`);
+    console.log(`Body: ${body}`);
+    
+    // Simulate email sending delay
+    await delay(1000);
+    return true;
+  }
+};
+
+// Function to send order confirmation email
+const sendOrderConfirmationEmail = async (order: Order): Promise<void> => {
+  try {
+    // Get user details
+    const user = users.find(u => u.id === order.userId);
+    if (!user) {
+      console.error(`User with ID ${order.userId} not found`);
+      return;
+    }
+    
+    // Create email content
+    const subject = `Order Confirmation: ${order.id}`;
+    
+    // Format order items
+    const itemsList = order.items.map(item => 
+      `${item.title} x ${item.quantity} - ₹${item.price.toFixed(2)}${item.isRental ? ' (Rental)' : ''}`
+    ).join('\n');
+    
+    const body = `
+      Dear ${user.name},
+      
+      Thank you for your order at BookHaven! Your order has been confirmed and is being processed.
+      
+      Order ID: ${order.id}
+      Order Date: ${new Date(order.createdAt).toLocaleDateString()}
+      
+      Items:
+      ${itemsList}
+      
+      Total Amount: ₹${order.totalAmount.toFixed(2)}
+      
+      Shipping Address:
+      ${order.shippingAddress.street}
+      ${order.shippingAddress.city}, ${order.shippingAddress.state} ${order.shippingAddress.zipCode}
+      ${order.shippingAddress.country}
+      
+      Payment Method: ${order.paymentMethod}
+      
+      Thank you for shopping with BookHaven!
+      
+      Best regards,
+      The BookHaven Team
+    `;
+    
+    // Send email
+    const success = await emailService.sendEmail(user.email, subject, body);
+    
+    // Update order with email status
+    if (success) {
+      const orderIndex = orders.findIndex(o => o.id === order.id);
+      if (orderIndex >= 0) {
+        orders[orderIndex].emailSent = true;
+      }
+    }
+  } catch (error) {
+    console.error('Error sending order confirmation email:', error);
+  }
+};
+
+// Payment service (mock)
+export const paymentService = {
+  processPayment: async (amount: number, paymentMethod: string, cardDetails?: any): Promise<{ success: boolean, transactionId?: string, error?: string }> => {
+    // This is a mock payment service
+    await delay(1500);
+    
+    // Simulate successful payment 95% of the time
+    const isSuccessful = Math.random() < 0.95;
+    
+    if (isSuccessful) {
+      return {
+        success: true,
+        transactionId: `TXN-${Math.floor(Math.random() * 1000000)}`
+      };
+    } else {
+      return {
+        success: false,
+        error: 'Payment processing failed. Please try again.'
+      };
+    }
   }
 };

@@ -3,23 +3,29 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { books, cart, calculateCartTotal, clearCart } from '@/lib/data';
+import { booksApi, cartApi, orderApi, paymentService } from '@/services/api';
+import { db } from '@/services/database';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { CreditCard, Landmark, Smartphone } from 'lucide-react';
 
 const Checkout: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [cartItems, setCartItems] = useState(cart);
+  const { user, isAuthenticated } = useAuth();
+  
+  const [cartItems, setCartItems] = useState<any[]>([]);
   const [isPageLoaded, setIsPageLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [subtotal, setSubtotal] = useState(0);
   const [tax, setTax] = useState(0);
   const [total, setTotal] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState('card');
+  const [books, setBooks] = useState<any[]>([]);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -31,39 +37,96 @@ const Checkout: React.FC = () => {
     city: '',
     state: '',
     zipCode: '',
+    country: 'India', // Default to India
     cardNumber: '',
     cardExpiry: '',
     cardCvv: '',
     upiId: '',
   });
 
+  // Load cart items and calculate totals
   useEffect(() => {
-    setIsPageLoaded(true);
+    const loadCartAndBooks = async () => {
+      try {
+        // Fetch books data
+        const booksData = await booksApi.getBooks();
+        setBooks(booksData);
+        
+        // Fetch cart items
+        const items = await cartApi.getCart();
+        
+        if (items.length === 0) {
+          navigate('/cart');
+          return;
+        }
+        
+        setCartItems(items);
+        
+        // Calculate totals
+        let subTotal = 0;
+        
+        items.forEach(item => {
+          const book = booksData.find(b => b.id === item.bookId);
+          if (book) {
+            const price = item.isRental 
+              ? (book.rentPrice || 0) * (item.rentalDays || 7) / 7
+              : book.price;
+            
+            subTotal += price * item.quantity;
+          }
+        });
+        
+        // Convert to rupees (multiplying by 83 as an example conversion rate)
+        // In a real app, you would use a proper currency conversion API
+        subTotal = subTotal * 83;
+        
+        const taxAmount = subTotal * 0.18; // 18% GST in India
+        
+        setSubtotal(subTotal);
+        setTax(taxAmount);
+        setTotal(subTotal + taxAmount);
+        
+        // If user is logged in, pre-fill email
+        if (user) {
+          setFormData(prev => ({
+            ...prev,
+            email: user.email,
+            firstName: user.name.split(' ')[0] || '',
+            lastName: user.name.split(' ').slice(1).join(' ') || ''
+          }));
+        }
+        
+        setIsPageLoaded(true);
+      } catch (error) {
+        console.error('Error loading cart data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load cart data. Please try again.",
+          variant: "destructive",
+        });
+        navigate('/cart');
+      }
+    };
     
-    if (cart.length === 0) {
-      navigate('/cart');
-      return;
-    }
-    
-    const subTotal = calculateCartTotal();
-    const taxAmount = subTotal * 0.1;
-    
-    setSubtotal(subTotal);
-    setTax(taxAmount);
-    setTotal(subTotal + taxAmount);
-  }, [navigate]);
-
-  useEffect(() => {
-    setCartItems([...cart]);
-  }, [cart]);
+    loadCartAndBooks();
+  }, [navigate, user, toast]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!isAuthenticated || !user) {
+      toast({
+        title: "Please Sign In",
+        description: "You need to be signed in to complete your purchase.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     // Validate form
     if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || 
@@ -93,20 +156,126 @@ const Checkout: React.FC = () => {
       return;
     }
     
-    // Process the order
-    // In a real app, this would send data to a backend
-    clearCart();
+    setIsLoading(true);
     
-    toast({
-      title: "Order Placed Successfully!",
-      description: "Your order has been placed and will be processed shortly.",
-    });
-    
-    navigate('/');
+    try {
+      // Process payment first
+      const paymentResult = await paymentService.processPayment(
+        total, 
+        paymentMethod,
+        paymentMethod === 'card' ? {
+          cardNumber: formData.cardNumber,
+          cardExpiry: formData.cardExpiry,
+          cardCvv: formData.cardCvv
+        } : null
+      );
+      
+      if (!paymentResult.success) {
+        toast({
+          title: "Payment Failed",
+          description: paymentResult.error || "There was an issue processing your payment. Please try again.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      // Create shipping address object
+      const shippingAddress = {
+        street: formData.address,
+        city: formData.city,
+        state: formData.state,
+        zipCode: formData.zipCode,
+        country: formData.country
+      };
+      
+      // Create order
+      const order = await orderApi.createOrder(
+        user.id,
+        cartItems,
+        shippingAddress,
+        paymentMethod
+      );
+      
+      // Store payment record in database
+      await db.query('payments', 'INSERT', {
+        order_id: order.id,
+        amount: total,
+        payment_method: paymentMethod,
+        transaction_id: paymentResult.transactionId || 'unknown',
+        status: 'completed'
+      });
+      
+      // Store order in database
+      await db.query('orders', 'INSERT', {
+        id: order.id,
+        user_id: user.id,
+        total_amount: total,
+        status: order.status,
+        shipping_street: shippingAddress.street,
+        shipping_city: shippingAddress.city,
+        shipping_state: shippingAddress.state,
+        shipping_zip: shippingAddress.zipCode,
+        shipping_country: shippingAddress.country,
+        payment_method: paymentMethod,
+        email_sent: order.emailSent || false
+      });
+      
+      // Store order items in database
+      for (const item of order.items) {
+        await db.query('order_items', 'INSERT', {
+          order_id: order.id,
+          book_id: item.bookId,
+          title: item.title,
+          quantity: item.quantity,
+          price: item.price * 83, // Convert to rupees
+          is_rental: item.isRental,
+          rental_days: item.rentalDays
+        });
+        
+        // Update book stock
+        const book = books.find(b => b.id === item.bookId);
+        if (book) {
+          await db.query('books', 'UPDATE', 
+            { in_stock: Math.max(0, book.inStock - item.quantity) },
+            bookRecord => bookRecord.id === item.bookId
+          );
+        }
+      }
+      
+      // Clear cart
+      await cartApi.clearCart();
+      
+      toast({
+        title: "Order Placed Successfully!",
+        description: "Your order has been placed and will be processed shortly. A confirmation email has been sent.",
+      });
+      
+      // Redirect to thank you page or home
+      navigate('/');
+    } catch (error) {
+      console.error('Error processing order:', error);
+      toast({
+        title: "Order Processing Failed",
+        description: "There was an error processing your order. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const getBookDetails = (bookId: string) => {
     return books.find(book => book.id === bookId);
+  };
+
+  // Function to format currency in rupees
+  const formatRupees = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
 
   return (
@@ -225,7 +394,7 @@ const Checkout: React.FC = () => {
                     </div>
                     <div>
                       <label htmlFor="zipCode" className="block text-sm font-medium mb-1">
-                        ZIP Code *
+                        PIN Code *
                       </label>
                       <Input
                         type="text"
@@ -330,8 +499,13 @@ const Checkout: React.FC = () => {
                 
                 {/* Submit button for mobile view */}
                 <div className="lg:hidden">
-                  <Button type="submit" className="w-full" size="lg">
-                    Place Order
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    size="lg" 
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Processing...' : 'Place Order'}
                   </Button>
                 </div>
               </form>
@@ -350,11 +524,14 @@ const Checkout: React.FC = () => {
                       ? (book.rentPrice || 0) * (item.rentalDays || 7) / 7
                       : book.price;
                     
+                    // Convert to rupees
+                    const priceInRupees = price * 83;
+                    
                     return (
                       <div key={`${item.bookId}-${item.isRental}`} className="flex gap-3 py-2">
                         <div className="flex-shrink-0 w-12">
                           <img 
-                            src={book.coverImage} 
+                            src={book.coverImage || book.imageUrl} 
                             alt={book.title} 
                             className="w-full h-auto object-cover rounded"
                           />
@@ -366,7 +543,9 @@ const Checkout: React.FC = () => {
                           </p>
                           <div className="flex justify-between mt-1">
                             <span className="text-xs">Qty: {item.quantity}</span>
-                            <span className="text-sm font-medium">${(price * item.quantity).toFixed(2)}</span>
+                            <span className="text-sm font-medium">
+                              {formatRupees(priceInRupees * item.quantity)}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -379,11 +558,11 @@ const Checkout: React.FC = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Subtotal</span>
-                    <span>${subtotal.toFixed(2)}</span>
+                    <span>{formatRupees(subtotal)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Tax (10%)</span>
-                    <span>${tax.toFixed(2)}</span>
+                    <span className="text-muted-foreground">GST (18%)</span>
+                    <span>{formatRupees(tax)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Shipping</span>
@@ -395,13 +574,19 @@ const Checkout: React.FC = () => {
                 
                 <div className="flex justify-between font-bold text-lg mb-6">
                   <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>{formatRupees(total)}</span>
                 </div>
                 
                 {/* Submit button for desktop view */}
                 <div className="hidden lg:block">
-                  <Button type="submit" className="w-full" size="lg" onClick={handleSubmit}>
-                    Place Order
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    size="lg" 
+                    onClick={handleSubmit}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Processing...' : 'Place Order'}
                   </Button>
                 </div>
               </div>
