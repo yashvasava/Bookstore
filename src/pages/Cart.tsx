@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { books, cart, removeFromCart, updateCartItemQuantity, calculateCartTotal, clearCart } from '@/lib/data';
+import { booksApi, cartApi } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { ShoppingCart, ArrowRight, Trash2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
@@ -12,50 +12,163 @@ import { useToast } from '@/components/ui/use-toast';
 const Cart: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [cartItems, setCartItems] = useState(cart);
+  const [cartItems, setCartItems] = useState<any[]>([]);
   const [isPageLoaded, setIsPageLoaded] = useState(false);
   const [total, setTotal] = useState(0);
+  const [books, setBooks] = useState<any[]>([]);
 
+  // Load cart items and calculate totals
   useEffect(() => {
-    setIsPageLoaded(true);
-    setTotal(calculateCartTotal());
-  }, []);
+    const loadCartAndBooks = async () => {
+      try {
+        // Fetch books data
+        const booksData = await booksApi.getBooks();
+        setBooks(booksData);
+        
+        // Fetch cart items
+        const items = await cartApi.getCart();
+        setCartItems(items);
+        
+        // Calculate total
+        let subTotal = 0;
+        
+        items.forEach(item => {
+          const book = booksData.find(b => b.id === item.bookId);
+          if (book) {
+            const price = item.isRental 
+              ? (book.rentPrice || 0) * (item.rentalDays || 7) / 7
+              : book.price;
+            
+            subTotal += price * item.quantity;
+          }
+        });
+        
+        // Convert to rupees (multiplying by 83 as an example conversion rate)
+        subTotal = subTotal * 83;
+        
+        setTotal(subTotal);
+        setIsPageLoaded(true);
+      } catch (error) {
+        console.error('Error loading cart data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load cart data. Please try again.",
+          variant: "destructive",
+        });
+      }
+    };
+    
+    loadCartAndBooks();
+  }, [toast]);
 
-  useEffect(() => {
-    setCartItems([...cart]);
-    setTotal(calculateCartTotal());
-  }, [cart]);
-
-  const handleQuantityChange = (bookId: string, isRental: boolean, quantity: number) => {
-    updateCartItemQuantity(bookId, isRental, quantity);
-    setCartItems([...cart]);
-    setTotal(calculateCartTotal());
+  const handleQuantityChange = async (bookId: string, isRental: boolean, quantity: number) => {
+    try {
+      await cartApi.updateCartItem(bookId, isRental, quantity);
+      
+      // Refresh cart items
+      const items = await cartApi.getCart();
+      setCartItems(items);
+      
+      // Recalculate total
+      let subTotal = 0;
+      
+      items.forEach(item => {
+        const book = books.find(b => b.id === item.bookId);
+        if (book) {
+          const price = item.isRental 
+            ? (book.rentPrice || 0) * (item.rentalDays || 7) / 7
+            : book.price;
+          
+          subTotal += price * item.quantity;
+        }
+      });
+      
+      // Convert to rupees
+      subTotal = subTotal * 83;
+      
+      setTotal(subTotal);
+    } catch (error) {
+      console.error('Error updating cart item:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update cart. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleRemoveItem = (bookId: string, isRental: boolean) => {
-    removeFromCart(bookId, isRental);
-    setCartItems([...cart]);
-    setTotal(calculateCartTotal());
-    
-    toast({
-      title: "Item Removed",
-      description: "The item has been removed from your cart.",
-    });
+  const handleRemoveItem = async (bookId: string, isRental: boolean) => {
+    try {
+      await cartApi.removeFromCart(bookId, isRental);
+      
+      // Refresh cart items
+      const items = await cartApi.getCart();
+      setCartItems(items);
+      
+      // Recalculate total
+      let subTotal = 0;
+      
+      items.forEach(item => {
+        const book = books.find(b => b.id === item.bookId);
+        if (book) {
+          const price = item.isRental 
+            ? (book.rentPrice || 0) * (item.rentalDays || 7) / 7
+            : book.price;
+          
+          subTotal += price * item.quantity;
+        }
+      });
+      
+      // Convert to rupees
+      subTotal = subTotal * 83;
+      
+      setTotal(subTotal);
+      
+      toast({
+        title: "Item Removed",
+        description: "The item has been removed from your cart.",
+      });
+    } catch (error) {
+      console.error('Error removing item from cart:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove item. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleClearCart = () => {
-    clearCart();
-    setCartItems([...cart]);
-    setTotal(calculateCartTotal());
-    
-    toast({
-      title: "Cart Cleared",
-      description: "All items have been removed from your cart.",
-    });
+  const handleClearCart = async () => {
+    try {
+      await cartApi.clearCart();
+      setCartItems([]);
+      setTotal(0);
+      
+      toast({
+        title: "Cart Cleared",
+        description: "All items have been removed from your cart.",
+      });
+    } catch (error) {
+      console.error('Error clearing cart:', error);
+      toast({
+        title: "Error",
+        description: "Failed to clear cart. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getBookDetails = (bookId: string) => {
     return books.find(book => book.id === bookId);
+  };
+
+  // Function to format currency in rupees
+  const formatRupees = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
 
   return (
@@ -88,13 +201,16 @@ const Cart: React.FC = () => {
                     const price = item.isRental 
                       ? (book.rentPrice || 0) * (item.rentalDays || 7) / 7
                       : book.price;
+                      
+                    // Convert to rupees
+                    const priceInRupees = price * 83;
                     
                     return (
                       <div key={`${item.bookId}-${item.isRental}`} className="p-4 flex flex-col sm:flex-row gap-4">
                         <div className="flex-shrink-0">
                           <Link to={`/books/${book.id}`}>
                             <img 
-                              src={book.coverImage} 
+                              src={book.coverImage || book.imageUrl} 
                               alt={book.title} 
                               className="w-24 h-36 object-cover rounded"
                             />
@@ -117,7 +233,7 @@ const Cart: React.FC = () => {
                             </div>
                             
                             <div className="text-right">
-                              <p className="font-medium">${price.toFixed(2)}</p>
+                              <p className="font-medium">{formatRupees(priceInRupees)}</p>
                               <p className="text-sm text-muted-foreground">
                                 {item.isRental ? 'Rental' : 'Purchase'}
                               </p>
@@ -178,22 +294,22 @@ const Cart: React.FC = () => {
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Subtotal</span>
-                      <span>${total.toFixed(2)}</span>
+                      <span>{formatRupees(total)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Shipping</span>
                       <span>Free</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Tax</span>
-                      <span>${(total * 0.1).toFixed(2)}</span>
+                      <span className="text-muted-foreground">Tax (GST 18%)</span>
+                      <span>{formatRupees(total * 0.18)}</span>
                     </div>
                     
                     <Separator />
                     
                     <div className="flex justify-between font-semibold">
                       <span>Total</span>
-                      <span>${(total + total * 0.1).toFixed(2)}</span>
+                      <span>{formatRupees(total + total * 0.18)}</span>
                     </div>
                   </div>
                   

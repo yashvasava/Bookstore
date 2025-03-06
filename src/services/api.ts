@@ -17,12 +17,12 @@ export interface Book {
   imageUrl: string;
   category: string[];
   featured: boolean;
-  inStock: number;
+  inStock: number; // Added explicitly
+  stock?: number;  // Added explicitly
   rating: number;
   publishDate: string;
   coverImage?: string;
   available?: boolean;
-  stock?: number; // Added explicitly to fix TypeScript errors
   publisher?: string;
   releaseDate?: string;
 }
@@ -71,11 +71,11 @@ initialBooks.forEach(book => {
     category: book.category,
     featured: book.featured,
     inStock: book.stock || 10, // Using stock property if available or default to 10
+    stock: book.stock,  // Keep the stock property
     rating: book.rating || 4, // Default rating if not provided
     publishDate: book.releaseDate || new Date().toISOString(), // Using releaseDate property
     coverImage: book.coverImage,
     available: book.available,
-    stock: book.stock, // Keep this property
     releaseDate: book.releaseDate
   };
   books.push(newBook);

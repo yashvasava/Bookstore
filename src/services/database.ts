@@ -1,4 +1,3 @@
-
 // This is a browser-compatible mock database service
 // In a real application, you would use a server-side database connection
 
@@ -109,7 +108,16 @@ interface PaymentRecord {
 
 // Mock database for client-side development
 class MockDatabase {
-  private storage: DatabaseSchema = {
+  private storage: {
+    users: UserRecord[];
+    books: BookRecord[];
+    book_categories: CategoryRecord[];
+    orders: OrderRecord[];
+    order_items: OrderItemRecord[];
+    rentals: RentalRecord[];
+    cart_items: CartItemRecord[];
+    payments: PaymentRecord[];
+  } = {
     users: [],
     books: [],
     book_categories: [],
@@ -152,7 +160,7 @@ class MockDatabase {
         image_url: book.coverImage || '/placeholder.svg',
         category_ids: book.category.map((_, index) => `cat-${index + 1}`),
         featured: book.featured,
-        in_stock: book.stock || 10,
+        in_stock: book.stock !== undefined ? book.stock : 10, // Fixed to check if stock exists
         rating: book.rating || 4,
         publish_date: book.releaseDate || new Date().toISOString(),
         created_at: new Date().toISOString(),
