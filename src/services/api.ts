@@ -1,3 +1,4 @@
+
 // Exporting the User type for use in other files
 export interface User {
   id: string;
@@ -17,7 +18,7 @@ export interface Book {
   category: string[];
   featured: boolean;
   inStock: number;
-  stock: number; // Added explicitly for compatibility
+  stock: number; // Explicitly added for compatibility
   rating: number;
   publishDate: string;
   coverImage?: string;
