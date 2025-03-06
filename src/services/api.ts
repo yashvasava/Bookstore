@@ -18,7 +18,7 @@ export interface Book {
   category: string[];
   featured: boolean;
   inStock: number;
-  stock: number; // Explicitly added for compatibility
+  stock: number; // Added stock property explicitly
   rating: number;
   publishDate: string;
   coverImage?: string;
@@ -71,7 +71,7 @@ initialBooks.forEach(book => {
     category: book.category,
     featured: book.featured,
     inStock: book.stock || 10, // Using stock property if available or default to 10
-    stock: book.stock || 10,  // Keep the stock property with a default value
+    stock: book.stock || 10,  // Using stock property if available or default to 10
     rating: book.rating || 4, // Default rating if not provided
     publishDate: book.releaseDate || new Date().toISOString(), // Using releaseDate property
     coverImage: book.coverImage,

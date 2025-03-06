@@ -13,7 +13,12 @@ const Index: React.FC = () => {
   const [isPageLoaded, setIsPageLoaded] = useState(false);
 
   useEffect(() => {
-    setIsPageLoaded(true);
+    // Add a small delay before showing content to ensure everything is ready
+    const timer = setTimeout(() => {
+      setIsPageLoaded(true);
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   const features = [
@@ -39,8 +44,19 @@ const Index: React.FC = () => {
     },
   ];
 
+  if (!isPageLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-lg">Loading page...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={`min-h-screen flex flex-col transition-opacity duration-500 ${isPageLoaded ? 'opacity-100' : 'opacity-0'}`}>
+    <div className="min-h-screen flex flex-col">
       <Navbar />
       
       <main className="flex-1 pt-16">

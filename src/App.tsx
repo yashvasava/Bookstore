@@ -44,19 +44,26 @@ const queryClient = new QueryClient({
 const App = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Initialize database on app start
   useEffect(() => {
     const init = async () => {
       try {
         console.log("Starting database initialization...");
+        setIsLoading(true);
         const success = await initializeDatabase();
         
         if (success) {
           console.log("Database initialized successfully");
           // Pre-fetch books data
-          const books = await booksApi.getBooks();
-          console.log(`Loaded ${books.length} books from API`);
+          try {
+            const books = await booksApi.getBooks();
+            console.log(`Loaded ${books.length} books from API`);
+          } catch (bookError) {
+            console.error("Error loading books:", bookError);
+            // Continue even if books fail to load
+          }
           setIsInitialized(true);
         } else {
           throw new Error("Database initialization returned false");
@@ -65,6 +72,8 @@ const App = () => {
         console.error("Database initialization failed:", error);
         setError("Failed to initialize database. Using fallback data.");
         setIsInitialized(true); // Still allow app to render with in-memory data
+      } finally {
+        setIsLoading(false);
       }
     };
     
@@ -72,7 +81,7 @@ const App = () => {
   }, []);
   
   // Show loading state until initialization is complete
-  if (!isInitialized) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -95,30 +104,39 @@ const App = () => {
         )}
         <BrowserRouter>
           <AuthProvider>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/books" element={<Books />} />
-              <Route path="/books/:id" element={<BookDetail />} />
-              <Route path="/cart" element={<Cart />} />
-              <Route path="/checkout" element={<Checkout />} />
-              <Route path="/categories" element={<Categories />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/account" element={<Account />} />
-              <Route path="/dashboard" element={<UserDashboard />} />
-              <Route path="/admin" element={<AdminDashboard />} />
-              
-              {/* Footer Pages */}
-              <Route path="/faq" element={<FAQ />} />
-              <Route path="/shipping" element={<ShippingPolicy />} />
-              <Route path="/returns" element={<ReturnsPolicy />} />
-              <Route path="/privacy" element={<PrivacyPolicy />} />
-              <Route path="/terms" element={<TermsConditions />} />
-              <Route path="/contact" element={<Contact />} />
-              
-              {/* Fix the redirect by using a component */}
-              <Route path="/book/:id" element={<BookRedirect />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            {!isInitialized ? (
+              <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-lg">Loading application...</p>
+                </div>
+              </div>
+            ) : (
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/books" element={<Books />} />
+                <Route path="/books/:id" element={<BookDetail />} />
+                <Route path="/cart" element={<Cart />} />
+                <Route path="/checkout" element={<Checkout />} />
+                <Route path="/categories" element={<Categories />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/account" element={<Account />} />
+                <Route path="/dashboard" element={<UserDashboard />} />
+                <Route path="/admin" element={<AdminDashboard />} />
+                
+                {/* Footer Pages */}
+                <Route path="/faq" element={<FAQ />} />
+                <Route path="/shipping" element={<ShippingPolicy />} />
+                <Route path="/returns" element={<ReturnsPolicy />} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
+                <Route path="/terms" element={<TermsConditions />} />
+                <Route path="/contact" element={<Contact />} />
+                
+                {/* Fix the redirect by using a component */}
+                <Route path="/book/:id" element={<BookRedirect />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            )}
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
